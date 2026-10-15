@@ -106,6 +106,22 @@ export function findEditTargets(trip: TripPlan, query: string, day?: string): Ed
 
   for (const si of sectionIndices) {
     const section = sections[si]!;
+    if (section.text) {
+      const m = matchInDelta(section.text, query);
+      if (m) {
+        targets.push({
+          kind: "rich-text",
+          label: "section text",
+          preview: `Section text: "${previewText(extractDeltaText(section.text))}"`,
+          sectionIndex: si,
+          blockIndex: -1,
+          fieldPath: ["itinerary", "sections", si, "text"],
+          offset: m.offset,
+          matchedLen: m.matchedLen,
+          crossesBoundary: m.crossesBoundary,
+        });
+      }
+    }
     for (let bi = 0; bi < section.blocks.length; bi++) {
       const block = section.blocks[bi]!;
       const blockBase: (string | number)[] = ["itinerary", "sections", si, "blocks", bi];

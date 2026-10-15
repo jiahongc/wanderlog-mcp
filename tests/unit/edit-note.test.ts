@@ -65,6 +65,15 @@ describe("findEditTargets — note blocks", () => {
     expect(results).toHaveLength(1);
   });
 
+  it("finds freestanding section text (textOnly sections)", () => {
+    const trip = fresh(mixedBlocksTrip);
+    trip.itinerary.sections[0]!.text = { ops: [{ insert: "Book long-distance trains\n" }] };
+    const results = findEditTargets(trip, "long-distance");
+    expect(results).toHaveLength(1);
+    expect(results[0]!.label).toBe("section text");
+    expect(results[0]!.fieldPath).toEqual(["itinerary", "sections", 0, "text"]);
+  });
+
   it("returns empty array for no match", () => {
     const trip = fresh(checklistTrip);
     expect(findEditTargets(trip, "xyz_impossible")).toHaveLength(0);
