@@ -194,9 +194,7 @@ function formatPlaceBlock(block: PlaceBlock, format: ResponseFormat): string | n
     const hotel = block.hotel?.checkIn
       ? ` (check-in ${block.hotel.checkIn}, out ${block.hotel.checkOut})`
       : "";
-    const note = hasNote
-      ? `\n    📝 ${inlineNote.length > 120 ? `${inlineNote.slice(0, 117)}…` : inlineNote}`
-      : "";
+    const note = hasNote ? `\n    📝 ${clipNote(inlineNote)}` : "";
     return `${time}${p.name}${rating}${hotel}${note}`;
   }
 
@@ -219,8 +217,7 @@ function formatNoteBlock(block: NoteBlock, format: ResponseFormat): string | nul
   if (!text) return null;
   const oneLine = text.replace(/\s+/g, " ").trim();
   if (format === "concise") {
-    const truncated = oneLine.length > 200 ? `${oneLine.slice(0, 197)}…` : oneLine;
-    return `📝 ${truncated}`;
+    return `📝 ${clipNote(oneLine)}`;
   }
   return `📝 ${oneLine}`;
 }
@@ -278,6 +275,15 @@ function formatFlightBlock(block: FlightBlock, format: ResponseFormat): string {
 
 const TRANSIT_ICON: Record<string, string> = { train: "🚆", ferry: "⛴", bus: "🚌" };
 
+// Notes carry booking refs, report times, and cancellation terms. Clip only past a
+// size no real note reaches, and always state how much was dropped. A silent "…"
+// previously hid a bus reservation number for an entire session.
+export const NOTE_CLIP = 1200;
+export function clipNote(text: string, max = NOTE_CLIP): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 3)}… [truncated, ${text.length - (max - 3)} chars dropped]`;
+}
+
 function formatTransitBlock(block: TransitBlock, format: ResponseFormat): string {
   const icon = TRANSIT_ICON[block.type] ?? "🚆";
   const carrier = block.carrier ?? block.type;
@@ -288,8 +294,10 @@ function formatTransitBlock(block: TransitBlock, format: ResponseFormat): string
   const note = quillToPlain(block.text).replace(/\s+/g, " ").trim();
 
   if (format === "concise") {
-    const noteLine = note ? `\n    📝 ${note.length > 120 ? `${note.slice(0, 117)}…` : note}` : "";
-    return `${icon} ${carrier} · ${from} → ${to}${departDate ? ` · ${departDate}${departTime}` : ""}${noteLine}`;
+    const noteLine = note ? `\n    📝 ${clipNote(note)}` : "";
+    const conf = block.confirmationNumber ? ` · conf. ${block.confirmationNumber}` : "";
+    const arriveTime = block.arrive?.time ? ` → ${block.arrive.time}` : "";
+    return `${icon} ${carrier} · ${from} → ${to}${departDate ? ` · ${departDate}${departTime}` : ""}${arriveTime}${conf}${noteLine}`;
   }
   const parts = [
     `${icon} ${carrier}`,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBlockLine, formatTrip, formatTripList } from "../../src/formatters/trip-summary.ts";
+import { clipNote, formatBlockLine, formatTrip, formatTripList } from "../../src/formatters/trip-summary.ts";
 import type { Block, TripPlanSummary } from "../../src/types.ts";
 import { queenstownTrip } from "../fixtures/queenstown-trip.ts";
 import { resolveDay } from "../../src/resolvers/day.ts";
@@ -151,5 +151,47 @@ describe("transit block formatting", () => {
     expect(line).toContain("Europcar CUN");
     expect(line).toContain("Europcar PDC");
     expect(line).toContain("R9");
+  });
+});
+
+describe("clipNote", () => {
+  it("returns short text unchanged", () => {
+    expect(clipNote("hello")).toBe("hello");
+  });
+
+  it("says how much it dropped instead of a silent ellipsis", () => {
+    const long = "x".repeat(1300);
+    const out = clipNote(long);
+    expect(out).toContain("[truncated, 103 chars dropped]");
+  });
+});
+
+describe("concise transit blocks", () => {
+  const bookingNote =
+    "2 adults (1 male + 1 female), JPY 4000 total via Japan Bus Online. Reservation 10092061211. " +
+    "Be at Kyoto Station Hachijo Exit (H2) by 9:20 AM; cancellation is JPY 100 per person any time " +
+    "before 8:50 AM that morning. E-ticket emailed; printed copy recommended.";
+
+  const bus = {
+    id: 7,
+    type: "bus",
+    carrier: "Kyoto Arima Onsen Liner",
+    confirmationNumber: "10092061211",
+    depart: { date: "2026-11-09", time: "09:30", place: { name: "Kyoto Station Hachijo Exit" } },
+    arrive: { date: "2026-11-09", time: "10:45", place: { name: "Arima Onsen" } },
+    text: { ops: [{ insert: bookingNote }] },
+  } as unknown as Block;
+
+  it("does not clip the booking note", () => {
+    const line = formatBlockLine(bus, "concise")!;
+    expect(line).toContain("Be at Kyoto Station Hachijo Exit (H2) by 9:20 AM");
+    expect(line).toContain("before 8:50 AM");
+    expect(line).not.toContain("[truncated");
+  });
+
+  it("shows the confirmation number in concise mode", () => {
+    const line = formatBlockLine(bus, "concise")!;
+    expect(line).toContain("conf. 10092061211");
+    expect(line).toContain("10:45");
   });
 });
